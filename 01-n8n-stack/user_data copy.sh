@@ -117,25 +117,6 @@ SUBDOMAIN=n8n2
 SUBDOMAIN2=evolution-api2
 DOMAIN_NAME=alisriosti.com.br
 GENERIC_TIMEZONE=America/Sao_Paulo
-
-# n8n Database Configuration
-DB_TYPE=postgresdb
-DB_POSTGRESDB_HOST=postgres
-DB_POSTGRESDB_PORT=5432
-DB_POSTGRESDB_DATABASE=n8n
-DB_POSTGRESDB_USER=postgres
-DB_POSTGRESDB_PASSWORD=123456
-N8N_ENCRYPTION_KEY=a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4
-EOF
-
-# Cria um script para inicializar múltiplos bancos de dados no PostgreSQL
-cat <<'EOF' > init-db.sh
-#!/bin/bash
-set -e
-
-psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
-    CREATE DATABASE n8n;
-EOSQL
 EOF
 
 # Cria o arquivo docker-compose.yml
@@ -180,7 +161,6 @@ services:
       - POSTGRES_DB=evolution
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
     expose:
       - 5432
     networks:
