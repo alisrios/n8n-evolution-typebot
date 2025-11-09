@@ -15,3 +15,12 @@ output "instance_ip" {
   value       = aws_eip.this.public_ip
 }
 
+output "route53_n8n" {
+  description = "DNS do n8n"
+  value       = aws_route53_record.n8n.name
+}
+
+output "route53_evolution" {
+  description = "DNS do n8n"
+  value       = aws_route53_record.evolution.name
+}
