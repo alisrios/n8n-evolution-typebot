@@ -1,6 +1,6 @@
-# n8n, Evolution API & Typebot Self-Hosting on AWS
+# N8N, Evolution API & Typebot Self-Hosting on AWS
 
-Este projeto fornece uma infraestrutura totalmente automatizada para auto-hospedagem do n8n, Evolution API e Typebot na AWS usando Terraform. Ele foi projetado para segurança, escalabilidade e facilidade de implantação.
+Este projeto fornece uma infraestrutura totalmente automatizada para auto-hospedagem do N8N, Evolution API e Typebot na AWS usando Terraform. Ele foi projetado para segurança, escalabilidade e facilidade de implantação.
 
 ## ✨ Principais Funcionalidades
 
