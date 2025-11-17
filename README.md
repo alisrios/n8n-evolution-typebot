@@ -1,6 +1,6 @@
-# n8n & Evolution API Self-Hosting on AWS
+# n8n, Evolution API & Typebot Self-Hosting on AWS
 
-Este projeto fornece uma infraestrutura totalmente automatizada para auto-hospedagem do n8n e da Evolution API na AWS usando Terraform. Ele foi projetado para segurança, escalabilidade e facilidade de implantação.
+Este projeto fornece uma infraestrutura totalmente automatizada para auto-hospedagem do n8n, Evolution API e Typebot na AWS usando Terraform. Ele foi projetado para segurança, escalabilidade e facilidade de implantação.
 
 ## ✨ Principais Funcionalidades
 
@@ -56,13 +56,17 @@ Provisiona toda a infraestrutura da aplicação:
 - Registros Route 53 tipo A para:
   - `n8n.alisriosti.com.br`
   - `evolution-api.alisriosti.com.br`
+  - `typebot.alisriosti.com.br`
+  - `typebot-viewer.alisriosti.com.br`
 
 #### Aplicação (Docker Compose)
 Containers executados na instância EC2:
 - **n8n**: Plataforma de automação de workflows
 - **Evolution API**: API para integração com WhatsApp
-- **PostgreSQL 16**: Banco de dados compartilhado (databases: evolution e n8n)
-- **Redis**: Cache para Evolution API
+- **Typebot Builder**: Interface de construção de chatbots
+- **Typebot Viewer**: Visualizador de chatbots
+- **PostgreSQL 16**: Banco de dados compartilhado (databases: evolution, n8n e typebot)
+- **Redis**: Cache compartilhado (database 0 para Evolution API, database 1 para Typebot)
 - **Traefik**: Reverse proxy com SSL automático via Let's Encrypt
 
 ## 📋 Pré-requisitos
@@ -104,14 +108,19 @@ Edite os seguintes arquivos em `01-n8n-stack/`:
 
 **route53.tf**:
 - Substitua `alisriosti.com.br` pelo seu domínio
-- Ajuste os subdomínios `n8n` e `evolution-api` conforme necessário
+- Ajuste os subdomínios `n8n`, `evolution-api`, `typebot` e `typebot-viewer` conforme necessário
 
 **user_data.sh**:
 - Ajuste as variáveis de ambiente no arquivo `.env`:
   - `SSL_EMAIL`: Seu email para certificados Let's Encrypt
-  - `SUBDOMAIN` e `SUBDOMAIN2`: Subdomínios para n8n e Evolution API
+  - `SUBDOMAIN`, `SUBDOMAIN2`, `SUBDOMAIN3` e `SUBDOMAIN4`: Subdomínios para n8n, Evolution API, Typebot Builder e Typebot Viewer
   - `DOMAIN_NAME`: Seu domínio
   - Senhas do PostgreSQL e PgAdmin (recomendado alterar)
+  - **Typebot SMTP**: Configure para autenticação por email
+    - `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`: Configurações do servidor SMTP
+    - `SMTP_PASSWORD`: Senha de app do Gmail (gere em https://myaccount.google.com/apppasswords)
+    - `NEXT_PUBLIC_SMTP_FROM`: Email remetente para magic links
+    - `DISABLE_SIGNUP`: `true` para desabilitar registro público
 
 ### 3. Implante o Backend de Estado Remoto
 ```bash
@@ -147,6 +156,8 @@ Após o `terraform apply`, aguarde aproximadamente 5-10 minutos para:
 Após a implantação bem-sucedida, acesse:
 - **n8n**: `https://n8n.seudominio.com.br`
 - **Evolution API**: `https://evolution-api.seudominio.com.br`
+- **Typebot Builder**: `https://typebot.seudominio.com.br`
+- **Typebot Viewer**: `https://typebot-viewer.seudominio.com.br`
 - **Traefik Dashboard**: `http://seu-ip:8081`
 
 ### Chaves de Segurança
@@ -171,7 +182,7 @@ sudo cat /var/log/cloud-init-output.log | grep -A 2 "Evolution API Key"
 - Host: `postgres` (interno ao Docker)
 - Usuário: `postgres`
 - Senha: `123456` (altere no `user_data.sh`)
-- Databases: `evolution` e `n8n`
+- Databases: `evolution`, `n8n` e `typebot`
 
 **PgAdmin** (se habilitado):
 - Email: `alisrios@gmail.com` (altere no `user_data.sh`)
@@ -180,6 +191,13 @@ sudo cat /var/log/cloud-init-output.log | grep -A 2 "Evolution API Key"
 **Redis**:
 - Host: `redis` (interno ao Docker)
 - Porta: `6379`
+- Database 0: Evolution API
+- Database 1: Typebot
+
+**Typebot**:
+- Autenticação: Email (magic link via SMTP)
+- Email admin: Configurado em `ADMIN_EMAIL`
+- Primeiro acesso: Digite seu email e clique no link recebido por email
 
 ⚠️ **IMPORTANTE**: Altere todas as senhas padrão antes de usar em produção!
 
@@ -213,6 +231,8 @@ Os volumes Docker persistem os dados em:
 - `/var/lib/docker/volumes/n8n_postgres_data`
 - `/var/lib/docker/volumes/n8n_evolution_store`
 - `/var/lib/docker/volumes/n8n_evolution_instances`
+- `/var/lib/docker/volumes/n8n_evolution_redis`
+- `/var/lib/docker/volumes/n8n_letsencrypt`
 
 Recomenda-se configurar snapshots automáticos do volume EBS da instância.
 
@@ -249,7 +269,7 @@ Estimativa mensal aproximada:
 
 ### Portas Expostas
 - 80 (HTTP - redireciona para HTTPS)
-- 443 (HTTPS - n8n e Evolution API)
+- 443 (HTTPS - n8n, Evolution API e Typebot)
 - 5678 (n8n webhooks)
 - 8081 (Traefik dashboard - considere restringir)
 
@@ -269,6 +289,13 @@ df -h
 - Verifique se as portas 80 e 443 estão abertas no Security Group
 - Confirme que os registros DNS estão propagados: `nslookup n8n.seudominio.com.br`
 - Verifique logs do Traefik: `sudo docker compose logs traefik`
+- **Rate limit do Let's Encrypt**: Se houver muitas tentativas falhas, aguarde 1 hora
+
+### Typebot não envia emails
+- Verifique se configurou a senha de app do Gmail corretamente
+- Teste as credenciais SMTP: `sudo docker compose logs typebot-builder`
+- Confirme que a verificação em 2 etapas está ativa no Gmail
+- Verifique se o email não está na pasta de spam
 
 ### Não consigo acessar via SSM
 - Verifique se a IAM Role está anexada à instância
