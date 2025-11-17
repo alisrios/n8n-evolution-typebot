@@ -43,6 +43,7 @@ sudo chown -R $USER:$USER /home/ec2-user/n8n
 # Gera chaves aleatórias
 export AUTHENTICATION_API_KEY=$(openssl rand -base64 32)
 export N8N_ENCRYPTION_KEY=$(openssl rand -base64 32)
+export TYPEBOT_ENCRYPTION_SECRET=$(openssl rand -hex 16)
 
 # Imprime a chave da API no log do sistema para fácil acesso
 echo "--- Evolution API Key ---"
@@ -129,6 +130,8 @@ WEBHOOK_URL=https://n8n.alisriosti.com.br/
 SSL_EMAIL=alisrios@gmail.com.br
 SUBDOMAIN=n8n
 SUBDOMAIN2=evolution-api
+SUBDOMAIN3=typebot
+SUBDOMAIN4=typebot-viewer
 DOMAIN_NAME=alisriosti.com.br
 GENERIC_TIMEZONE=America/Sao_Paulo
 
@@ -140,6 +143,25 @@ DB_POSTGRESDB_DATABASE=n8n
 DB_POSTGRESDB_USER=postgres
 DB_POSTGRESDB_PASSWORD=123456
 N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
+
+# Typebot Configuration
+ENCRYPTION_SECRET=${TYPEBOT_ENCRYPTION_SECRET}
+DATABASE_URL=postgresql://postgres:123456@postgres:5432/typebot
+NEXTAUTH_URL=https://typebot.alisriosti.com.br
+NEXT_PUBLIC_VIEWER_URL=https://typebot-viewer.alisriosti.com.br
+ADMIN_EMAIL=alisrios@gmail.com
+REDIS_URL=redis://redis:6379/1
+NODE_OPTIONS=--no-node-snapshot
+
+# Typebot Email Authentication Configuration
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USERNAME=alisrios@gmail.com
+SMTP_PASSWORD=zwbu hwjh egnl bpls
+SMTP_SECURE=false
+SMTP_AUTH_DISABLED=false
+NEXT_PUBLIC_SMTP_FROM=Typebot <alisrios@gmail.com>
+DISABLE_SIGNUP=true
 EOF
 
 # Cria um script para inicializar múltiplos bancos de dados no PostgreSQL
@@ -149,6 +171,7 @@ set -e
 
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
     CREATE DATABASE n8n;
+    CREATE DATABASE typebot;
 EOSQL
 EOF
 
@@ -176,13 +199,20 @@ services:
   redis:
     image: redis:latest
     container_name: redis
-    command: redis-server --port 6379 --appendonly yes
+    restart: always
+    command: redis-server --port 6379 --appendonly yes --save 60 1 --loglevel warning
     volumes:
       - evolution_redis:/data
     networks:
       - evolution-net
     expose:
       - 6379
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
+      start_period: 20s
+      interval: 30s
+      retries: 5
+      timeout: 3s
 
   postgres:
     image: postgres:16
@@ -199,6 +229,11 @@ services:
       - 5432
     networks:
       - evolution-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   n8n:
     image: docker.n8n.io/n8nio/n8n
@@ -217,6 +252,46 @@ services:
       - traefik.http.routers.n8n.rule=Host("\${SUBDOMAIN}.\${DOMAIN_NAME}")
       - "traefik.http.routers.n8n.entrypoints=websecure"
       - "traefik.http.routers.n8n.tls.certresolver=myresolver"
+
+  typebot-builder:
+    image: baptistearno/typebot-builder:latest
+    container_name: typebot-builder
+    restart: always
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    networks:
+      - evolution-net
+    env_file:
+      - .env
+    labels:
+      - "traefik.enable=true"
+      - traefik.http.routers.typebot-builder.rule=Host("\${SUBDOMAIN3}.\${DOMAIN_NAME}")
+      - "traefik.http.routers.typebot-builder.entrypoints=websecure"
+      - "traefik.http.routers.typebot-builder.tls.certresolver=myresolver"
+      - "traefik.http.services.typebot-builder.loadbalancer.server.port=3000"
+
+  typebot-viewer:
+    image: baptistearno/typebot-viewer:latest
+    container_name: typebot-viewer
+    restart: always
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    networks:
+      - evolution-net
+    env_file:
+      - .env
+    labels:
+      - "traefik.enable=true"
+      - traefik.http.routers.typebot-viewer.rule=Host("\${SUBDOMAIN4}.\${DOMAIN_NAME}")
+      - "traefik.http.routers.typebot-viewer.entrypoints=websecure"
+      - "traefik.http.routers.typebot-viewer.tls.certresolver=myresolver"
+      - "traefik.http.services.typebot-viewer.loadbalancer.server.port=3000"
 
   traefik:
     image: traefik:v3.5.4

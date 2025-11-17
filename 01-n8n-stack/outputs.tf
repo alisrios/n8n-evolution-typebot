@@ -21,6 +21,16 @@ output "route53_n8n" {
 }
 
 output "route53_evolution" {
-  description = "DNS do n8n"
+  description = "DNS do Evolution API"
   value       = aws_route53_record.evolution.name
+}
+
+output "route53_typebot" {
+  description = "DNS do Typebot Builder"
+  value       = aws_route53_record.typebot.name
+}
+
+output "route53_typebot_viewer" {
+  description = "DNS do Typebot Viewer"
+  value       = aws_route53_record.typebot_viewer.name
 }
