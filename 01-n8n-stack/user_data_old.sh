@@ -45,17 +45,6 @@ export AUTHENTICATION_API_KEY=$(openssl rand -base64 32)
 export N8N_ENCRYPTION_KEY=$(openssl rand -base64 32)
 export TYPEBOT_ENCRYPTION_SECRET=$(openssl rand -hex 16)
 
-# Aguarda a instância estar pronta e obter credenciais S3 via tags da instância
-sleep 10
-INSTANCE_ID=$(ec2-metadata --instance-id | cut -d " " -f 2)
-AWS_REGION=$(ec2-metadata --availability-zone | cut -d " " -f 2 | sed 's/[a-z]$//')
-
-# Obter credenciais S3 das tags da instância
-export S3_BUCKET=$(aws ec2 describe-tags --region $AWS_REGION --filters "Name=resource-id,Values=$INSTANCE_ID" "Name=key,Values=typebot_s3_bucket" --query 'Tags[0].Value' --output text)
-export S3_ACCESS_KEY=$(aws ec2 describe-tags --region $AWS_REGION --filters "Name=resource-id,Values=$INSTANCE_ID" "Name=key,Values=typebot_s3_access_key" --query 'Tags[0].Value' --output text)
-export S3_SECRET_KEY=$(aws ec2 describe-tags --region $AWS_REGION --filters "Name=resource-id,Values=$INSTANCE_ID" "Name=key,Values=typebot_s3_secret_key" --query 'Tags[0].Value' --output text)
-export S3_REGION=$AWS_REGION
-
 # Imprime a chave da API no log do sistema para fácil acesso
 echo "--- Evolution API Key ---"
 echo "${AUTHENTICATION_API_KEY}"
@@ -131,22 +120,20 @@ CHATWOOT_IMPORT_PLACEHOLDER_MEDIA_MESSAGE=true
 # AWS S3 #
 S3_ENABLED=false
 
-# Domain Configuration (definir antes de usar)
-SUBDOMAIN=n8n
-SUBDOMAIN2=evolution-api
-SUBDOMAIN3=typebot
-SUBDOMAIN4=typebot-viewer
-DOMAIN_NAME=alisriosti.com.br
-SSL_EMAIL=alisrios@gmail.com.br
-GENERIC_TIMEZONE=America/Sao_Paulo
-
 # N8N #
 N8N_SECURE_COOKIE=false
 N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true
 N8N_PROTOCOL=https
 N8N_PROXY_HOPS=1
 N8N_RUNNERS_ENABLED=true
-WEBHOOK_URL=https://${SUBDOMAIN}.${DOMAIN_NAME}/
+WEBHOOK_URL=https://n8n.alisriosti.com.br/
+SSL_EMAIL=alisrios@gmail.com.br
+SUBDOMAIN=n8n
+SUBDOMAIN2=evolution-api
+SUBDOMAIN3=typebot
+SUBDOMAIN4=typebot-viewer
+DOMAIN_NAME=alisriosti.com.br
+GENERIC_TIMEZONE=America/Sao_Paulo
 
 # n8n Database Configuration
 DB_TYPE=postgresdb
@@ -160,8 +147,8 @@ N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
 # Typebot Configuration
 ENCRYPTION_SECRET=${TYPEBOT_ENCRYPTION_SECRET}
 DATABASE_URL=postgresql://postgres:123456@postgres:5432/typebot
-NEXTAUTH_URL=https://${SUBDOMAIN3}.${DOMAIN_NAME}
-NEXT_PUBLIC_VIEWER_URL=https://${SUBDOMAIN4}.${DOMAIN_NAME}
+NEXTAUTH_URL=https://typebot.alisriosti.com.br
+NEXT_PUBLIC_VIEWER_URL=https://typebot-viewer.alisriosti.com.br
 ADMIN_EMAIL=alisrios@gmail.com
 REDIS_URL=redis://redis:6379/1
 NODE_OPTIONS=--no-node-snapshot
@@ -175,17 +162,6 @@ SMTP_SECURE=false
 SMTP_AUTH_DISABLED=false
 NEXT_PUBLIC_SMTP_FROM=Typebot <alisrios@gmail.com>
 DISABLE_SIGNUP=true
-
-# Typebot S3 Configuration (para upload de imagens)
-# Nota: A variável S3_ENABLED acima é para Evolution API, não afeta o Typebot
-S3_ENDPOINT=s3.${S3_REGION}.amazonaws.com
-S3_ACCESS_KEY=${S3_ACCESS_KEY}
-S3_SECRET_KEY=${S3_SECRET_KEY}
-S3_BUCKET=${S3_BUCKET}
-S3_REGION=${S3_REGION}
-S3_PORT=443
-S3_SSL=true
-S3_PUBLIC_CUSTOM_DOMAIN=https://${S3_BUCKET}.s3.${S3_REGION}.amazonaws.com
 EOF
 
 # Cria um script para inicializar múltiplos bancos de dados no PostgreSQL

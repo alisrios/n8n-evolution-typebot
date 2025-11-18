@@ -17,7 +17,16 @@ resource "aws_instance" "this" {
 
   tags = {
     Name     = var.aws_instance_name
-    ambiente = "producao"
+    ambiente = "production"
+    # Tags usadas pelo user_data.sh para configurar S3 automaticamente
+    typebot_s3_bucket     = aws_s3_bucket.typebot_uploads.id
+    typebot_s3_access_key = aws_iam_access_key.typebot_s3.id
+    typebot_s3_secret_key = aws_iam_access_key.typebot_s3.secret
   }
+
+  depends_on = [
+    aws_s3_bucket.typebot_uploads,
+    aws_iam_access_key.typebot_s3
+  ]
 
 }

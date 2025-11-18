@@ -3,7 +3,7 @@ variable "tags" {
   type = map(string)
   default = {
     Environment = "production"
-    Project     = "n8n-self-hosting-evolution"
+    Project     = "n8n-evolution-typebot"
   }
 }
 
@@ -45,7 +45,7 @@ variable "vpc" {
   })
   default = {
     cidr_block               = "10.0.0.0/24"
-    name                     = "vpc-n8n-self-hosting-evolution"
+    name                     = "vpc-n8n-evolution-typebot"
     internet_gateway_name    = "internet-gateway"
     public_route_table_name  = "public-route-table"
     private_route_table_name = "private-route-table"
@@ -78,5 +78,5 @@ variable "vpc" {
 
 variable "aws_instance_name" {
   description = "Name of the EC2 instance"
-  default     = "n8n-self-hosting"
+  default     = "n8n-evolution-typebot"
 }
