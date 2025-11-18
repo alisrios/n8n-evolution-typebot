@@ -14,6 +14,23 @@ Este projeto fornece uma infraestrutura totalmente automatizada para auto-hosped
 -   **Cache Redis**: Implementado para melhor performance da Evolution API.
 -   **Acesso Seguro via SSM**: Acesso à instância EC2 via AWS Systems Manager, sem necessidade de chaves SSH.
 
+## ✨ Funcionalidades Avançadas
+
+### Configuração Automática do S3
+- **Bucket S3** criado automaticamente para uploads do Typebot
+- **Credenciais IAM** geradas e injetadas via tags da instância EC2
+- **CORS** configurado para permitir uploads dos domínios do Typebot
+- **Política de acesso público** para leitura de imagens
+- **Force destroy** habilitado para facilitar limpeza
+
+### URLs Dinâmicas
+Todas as URLs são geradas dinamicamente baseadas nas variáveis de domínio:
+- `WEBHOOK_URL` → `https://${SUBDOMAIN}.${DOMAIN_NAME}/`
+- `NEXTAUTH_URL` → `https://${SUBDOMAIN3}.${DOMAIN_NAME}`
+- `NEXT_PUBLIC_VIEWER_URL` → `https://${SUBDOMAIN4}.${DOMAIN_NAME}`
+
+Isso facilita a manutenção e permite múltiplas instalações com diferentes subdomínios.
+
 ## 🏗️ Arquitetura
 
 A infraestrutura é dividida em duas stacks principais do Terraform:
@@ -69,6 +86,12 @@ Containers executados na instância EC2:
 - **Redis**: Cache compartilhado (database 0 para Evolution API, database 1 para Typebot)
 - **Traefik**: Reverse proxy com SSL automático via Let's Encrypt
 
+#### Armazenamento (S3)
+- **Bucket S3**: Armazenamento de uploads do Typebot (imagens, arquivos)
+- **IAM User**: Credenciais dedicadas para acesso ao S3
+- **CORS**: Configurado para permitir uploads do Typebot
+- **Acesso Público**: Leitura pública habilitada para servir imagens
+
 ## 📋 Pré-requisitos
 
 -   [Terraform](https://www.terraform.io/downloads.html) >= 1.11.0 instalado
@@ -112,15 +135,22 @@ Edite os seguintes arquivos em `01-n8n-stack/`:
 
 **user_data.sh**:
 - Ajuste as variáveis de ambiente no arquivo `.env`:
-  - `SSL_EMAIL`: Seu email para certificados Let's Encrypt
-  - `SUBDOMAIN`, `SUBDOMAIN2`, `SUBDOMAIN3` e `SUBDOMAIN4`: Subdomínios para n8n, Evolution API, Typebot Builder e Typebot Viewer
-  - `DOMAIN_NAME`: Seu domínio
+  - **Domain Configuration** (definidas no início do .env):
+    - `SUBDOMAIN`: Subdomínio do n8n (padrão: n8n)
+    - `SUBDOMAIN2`: Subdomínio da Evolution API (padrão: evolution-api)
+    - `SUBDOMAIN3`: Subdomínio do Typebot Builder (padrão: typebot)
+    - `SUBDOMAIN4`: Subdomínio do Typebot Viewer (padrão: typebot-viewer)
+    - `DOMAIN_NAME`: Seu domínio (ex: alisriosti.com.br)
+    - `SSL_EMAIL`: Seu email para certificados Let's Encrypt
   - Senhas do PostgreSQL e PgAdmin (recomendado alterar)
   - **Typebot SMTP**: Configure para autenticação por email
     - `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`: Configurações do servidor SMTP
     - `SMTP_PASSWORD`: Senha de app do Gmail (gere em https://myaccount.google.com/apppasswords)
     - `NEXT_PUBLIC_SMTP_FROM`: Email remetente para magic links
     - `DISABLE_SIGNUP`: `true` para desabilitar registro público
+  - **Typebot S3**: Configurado automaticamente via tags da instância EC2
+    - As credenciais S3 são obtidas automaticamente das tags da instância
+    - Não é necessário configurar manualmente
 
 ### 3. Implante o Backend de Estado Remoto
 ```bash
@@ -226,15 +256,24 @@ sudo docker compose restart
 ```
 
 ### Backup dos Dados
-Os volumes Docker persistem os dados em:
-- `/var/lib/docker/volumes/n8n_n8n_data`
-- `/var/lib/docker/volumes/n8n_postgres_data`
-- `/var/lib/docker/volumes/n8n_evolution_store`
-- `/var/lib/docker/volumes/n8n_evolution_instances`
-- `/var/lib/docker/volumes/n8n_evolution_redis`
-- `/var/lib/docker/volumes/n8n_letsencrypt`
 
-Recomenda-se configurar snapshots automáticos do volume EBS da instância.
+**Volumes Docker** (persistem os dados em):
+- `/var/lib/docker/volumes/n8n_n8n_data` - Dados do n8n
+- `/var/lib/docker/volumes/n8n_postgres_data` - Banco de dados PostgreSQL
+- `/var/lib/docker/volumes/n8n_evolution_store` - Dados da Evolution API
+- `/var/lib/docker/volumes/n8n_evolution_instances` - Instâncias da Evolution API
+- `/var/lib/docker/volumes/n8n_evolution_redis` - Cache Redis
+- `/var/lib/docker/volumes/n8n_letsencrypt` - Certificados SSL
+
+**Bucket S3** (uploads do Typebot):
+- Bucket: `typebot-uploads-{account-id}`
+- Versionamento habilitado
+- Recomenda-se configurar lifecycle policies para arquivos antigos
+
+**Recomendações**:
+- Configure snapshots automáticos do volume EBS da instância
+- Configure backup do bucket S3 (S3 Versioning já está habilitado)
+- Exporte regularmente os dados do PostgreSQL
 
 ### Atualizar Aplicações
 ```bash
@@ -249,11 +288,12 @@ Estimativa mensal aproximada:
 - EC2 t4g.small: ~$15/mês
 - EBS 30GB: ~$3/mês
 - Elastic IP: Grátis (enquanto associado)
-- Route 53: ~$0.50/mês por zona hospedada
+- Route 53: ~$0.50/mês por zona hospedada + $0.50/mês por registro
 - S3 (estado Terraform): < $1/mês
+- S3 (uploads Typebot): ~$0.023/GB armazenado + $0.09/GB transferido
 - Transferência de dados: Variável
 
-**Total estimado**: ~$20-25/mês (pode variar conforme uso)
+**Total estimado**: ~$20-30/mês (pode variar conforme uso e volume de uploads)
 
 ## 🛡️ Segurança
 
@@ -297,6 +337,13 @@ df -h
 - Confirme que a verificação em 2 etapas está ativa no Gmail
 - Verifique se o email não está na pasta de spam
 
+### Typebot não faz upload de imagens
+- Verifique se as credenciais S3 estão corretas: `cat .env | grep ^S3_`
+- Teste o acesso ao bucket: `aws s3 ls s3://typebot-uploads-{account-id}/`
+- Verifique os logs: `docker logs typebot-builder --tail 50`
+- Confirme que o CORS está configurado corretamente no bucket S3
+- Verifique se o domínio do Typebot está na lista de origens permitidas no CORS
+
 ### Não consigo acessar via SSM
 - Verifique se a IAM Role está anexada à instância
 - Confirme que a política `AmazonSSMManagedInstanceCore` está presente
@@ -331,22 +378,24 @@ terraform destroy
 │   └── output.tf            # Outputs da stack
 │
 ├── 01-n8n-stack/
-│   ├── main.tf              # Provider AWS
-│   ├── state.config.tf      # Configuração backend S3
-│   ├── variables.tf         # Variáveis da stack
-│   ├── vpc.tf               # VPC principal
+│   ├── main.tf                  # Provider AWS
+│   ├── state.config.tf          # Configuração backend S3
+│   ├── variables.tf             # Variáveis da stack
+│   ├── vpc.tf                   # VPC principal
 │   ├── vpc.public-subnets.tf
 │   ├── vpc.private-subnets.tf
 │   ├── vpc.internet-gateway.tf
 │   ├── vpc.public-route-table.tf
 │   ├── vpc.private-route-table.tf
-│   ├── instance.ec2.tf      # Instância EC2
-│   ├── eip.tf               # Elastic IP
-│   ├── security.group.tf    # Security Group
-│   ├── iam.tf               # IAM Roles e Policies
-│   ├── route53.tf           # Registros DNS
-│   ├── user_data.sh         # Script de bootstrap
-│   └── outputs.tf           # Outputs da stack
+│   ├── instance.ec2.tf          # Instância EC2 (com tags S3)
+│   ├── eip.tf                   # Elastic IP
+│   ├── security.group.tf        # Security Group
+│   ├── iam.tf                   # IAM Roles e Policies
+│   ├── route53.tf               # Registros DNS
+│   ├── s3-typebot.tf            # Bucket S3 para Typebot
+│   ├── user_data.sh             # Script de bootstrap
+│   ├── configure-s3.sh          # Script auxiliar (opcional)
+│   └── outputs.tf               # Outputs da stack
 │
 └── README.md
 ```
