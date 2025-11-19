@@ -9,7 +9,7 @@ Este projeto fornece uma infraestrutura totalmente automatizada para auto-hosped
 -   **Gerenciamento de Estado Remoto**: Utiliza bucket S3 com versionamento para armazenar o estado do Terraform de forma segura e colaborativa.
 -   **Arquitetura ARM64**: Utiliza instância EC2 `t4g.small` (AWS Graviton) oferecendo melhor custo-benefício e performance.
 -   **SSL Automático**: Certificados SSL gerenciados automaticamente via Traefik e Let's Encrypt.
--   **DNS Gerenciado**: Registros Route 53 configurados automaticamente para n8n e Evolution API.
+-   **DNS Gerenciado**: Registros Route 53 configurados automaticamente para n8n, Evolution API, Typebot Builder e Typebot Viewer.
 -   **Banco de Dados Persistente**: PostgreSQL containerizado com volumes persistentes para n8n e Evolution API.
 -   **Cache Redis**: Implementado para melhor performance da Evolution API.
 -   **Acesso Seguro via SSM**: Acesso à instância EC2 via AWS Systems Manager, sem necessidade de chaves SSH.
