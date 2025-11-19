@@ -24,12 +24,28 @@ Este projeto fornece uma infraestrutura totalmente automatizada para auto-hosped
 - **Force destroy** habilitado para facilitar limpeza
 
 ### URLs Dinâmicas
-Todas as URLs são geradas dinamicamente baseadas nas variáveis de domínio:
-- `WEBHOOK_URL` → `https://${SUBDOMAIN}.${DOMAIN_NAME}/`
-- `NEXTAUTH_URL` → `https://${SUBDOMAIN3}.${DOMAIN_NAME}`
-- `NEXT_PUBLIC_VIEWER_URL` → `https://${SUBDOMAIN4}.${DOMAIN_NAME}`
+Todas as URLs são geradas dinamicamente baseadas nas variáveis exportadas no `user_data.sh`:
 
-Isso facilita a manutenção e permite múltiplas instalações com diferentes subdomínios.
+**Variáveis exportadas** (definidas no início do script):
+```bash
+export SUBDOMAIN_N8N=n8n
+export SUBDOMAIN_EVO=evolution-api
+export SUBDOMAIN_TYPEBOT=typebot
+export SUBDOMAIN_TYPEBOT_VIEWER=typebot-viewer
+export DOMAIN_NAME_OWNER=alisriosti.com.br
+export SSL_EMAIL_OWNER=alisrios@gmail.com.br
+```
+
+**URLs geradas automaticamente**:
+- `WEBHOOK_URL` → `https://${SUBDOMAIN_N8N}.${DOMAIN_NAME_OWNER}/`
+- `NEXTAUTH_URL` → `https://${SUBDOMAIN_TYPEBOT}.${DOMAIN_NAME_OWNER}`
+- `NEXT_PUBLIC_VIEWER_URL` → `https://${SUBDOMAIN_TYPEBOT_VIEWER}.${DOMAIN_NAME_OWNER}`
+
+**Vantagens**:
+- Facilita a manutenção (altere apenas as variáveis exportadas)
+- Permite múltiplas instalações com diferentes subdomínios
+- Evita duplicação de valores no código
+- Garante consistência entre `.env` e `compose.yml`
 
 ## 🏗️ Arquitetura
 
@@ -134,14 +150,18 @@ Edite os seguintes arquivos em `01-n8n-stack/`:
 - Ajuste os subdomínios `n8n`, `evolution-api`, `typebot` e `typebot-viewer` conforme necessário
 
 **user_data.sh**:
-- Ajuste as variáveis de ambiente no arquivo `.env`:
-  - **Domain Configuration** (definidas no início do .env):
-    - `SUBDOMAIN`: Subdomínio do n8n (padrão: n8n)
-    - `SUBDOMAIN2`: Subdomínio da Evolution API (padrão: evolution-api)
-    - `SUBDOMAIN3`: Subdomínio do Typebot Builder (padrão: typebot)
-    - `SUBDOMAIN4`: Subdomínio do Typebot Viewer (padrão: typebot-viewer)
-    - `DOMAIN_NAME`: Seu domínio (ex: alisriosti.com.br)
-    - `SSL_EMAIL`: Seu email para certificados Let's Encrypt
+- Ajuste as variáveis exportadas no início do script (linhas 54-59):
+  - **Domain Configuration** (variáveis exportadas):
+    - `SUBDOMAIN_N8N`: Subdomínio do n8n (padrão: n8n)
+    - `SUBDOMAIN_EVO`: Subdomínio da Evolution API (padrão: evolution-api)
+    - `SUBDOMAIN_TYPEBOT`: Subdomínio do Typebot Builder (padrão: typebot)
+    - `SUBDOMAIN_TYPEBOT_VIEWER`: Subdomínio do Typebot Viewer (padrão: typebot-viewer)
+    - `DOMAIN_NAME_OWNER`: Seu domínio (ex: alisriosti.com.br)
+    - `SSL_EMAIL_OWNER`: Seu email para certificados Let's Encrypt
+  - Essas variáveis são usadas para gerar automaticamente:
+    - URLs dos serviços (`WEBHOOK_URL`, `NEXTAUTH_URL`, `NEXT_PUBLIC_VIEWER_URL`)
+    - Registros DNS no Route53
+    - Configurações do Traefik
   - Senhas do PostgreSQL e PgAdmin (recomendado alterar)
   - **Typebot SMTP**: Configure para autenticação por email
     - `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`: Configurações do servidor SMTP

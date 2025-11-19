@@ -15,7 +15,7 @@ sudo systemctl enable docker
 sudo systemctl start docker
 
 # Instalar Docker Compose 2 para ARM64
-DOCKER_COMPOSE_VERSION="v2.23.3"
+DOCKER_COMPOSE_VERSION="v2.40.3"
 sudo mkdir -p /usr/local/lib/docker/cli-plugins
 sudo curl -SL "https://github.com/docker/compose/releases/download/${DOCKER_COMPOSE_VERSION}/docker-compose-linux-aarch64" -o /usr/local/lib/docker/cli-plugins/docker-compose
 sudo chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
@@ -49,6 +49,14 @@ export TYPEBOT_ENCRYPTION_SECRET=$(openssl rand -hex 16)
 sleep 10
 INSTANCE_ID=$(ec2-metadata --instance-id | cut -d " " -f 2)
 AWS_REGION=$(ec2-metadata --availability-zone | cut -d " " -f 2 | sed 's/[a-z]$//')
+
+# Domain Configuration (definir antes de usar)
+export SUBDOMAIN_N8N=n8n
+export SUBDOMAIN_EVO=evolution-api
+export SUBDOMAIN_TYPEBOT=typebot
+export SUBDOMAIN_TYPEBOT_VIEWER=typebot-viewer
+export DOMAIN_NAME_OWNER=alisriosti.com.br
+export SSL_EMAIL_OWNER=alisrios@gmail.com
 
 # Obter credenciais S3 das tags da instância
 export S3_BUCKET=$(aws ec2 describe-tags --region $AWS_REGION --filters "Name=resource-id,Values=$INSTANCE_ID" "Name=key,Values=typebot_s3_bucket" --query 'Tags[0].Value' --output text)
@@ -131,13 +139,13 @@ CHATWOOT_IMPORT_PLACEHOLDER_MEDIA_MESSAGE=true
 # AWS S3 #
 S3_ENABLED=false
 
-# Domain Configuration (definir antes de usar)
-SUBDOMAIN=n8n
-SUBDOMAIN2=evolution-api
-SUBDOMAIN3=typebot
-SUBDOMAIN4=typebot-viewer
-DOMAIN_NAME=alisriosti.com.br
-SSL_EMAIL=alisrios@gmail.com.br
+# Domain Configuration 
+SUBDOMAIN=${SUBDOMAIN_N8N}
+SUBDOMAIN2=${SUBDOMAIN_EVO}
+SUBDOMAIN3=${SUBDOMAIN_TYPEBOT}
+SUBDOMAIN4=${SUBDOMAIN_TYPEBOT_VIEWER}
+DOMAIN_NAME=${DOMAIN_NAME_OWNER}
+SSL_EMAIL=${SSL_EMAIL_OWNER}
 GENERIC_TIMEZONE=America/Sao_Paulo
 
 # N8N #
@@ -146,7 +154,7 @@ N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true
 N8N_PROTOCOL=https
 N8N_PROXY_HOPS=1
 N8N_RUNNERS_ENABLED=true
-WEBHOOK_URL=https://${SUBDOMAIN}.${DOMAIN_NAME}/
+WEBHOOK_URL=https://${SUBDOMAIN_N8N}.${DOMAIN_NAME_OWNER}/
 
 # n8n Database Configuration
 DB_TYPE=postgresdb
@@ -160,9 +168,9 @@ N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
 # Typebot Configuration
 ENCRYPTION_SECRET=${TYPEBOT_ENCRYPTION_SECRET}
 DATABASE_URL=postgresql://postgres:123456@postgres:5432/typebot
-NEXTAUTH_URL=https://${SUBDOMAIN3}.${DOMAIN_NAME}
-NEXT_PUBLIC_VIEWER_URL=https://${SUBDOMAIN4}.${DOMAIN_NAME}
-ADMIN_EMAIL=alisrios@gmail.com
+NEXTAUTH_URL=https://${SUBDOMAIN_TYPEBOT}.${DOMAIN_NAME_OWNER}
+NEXT_PUBLIC_VIEWER_URL=https://${SUBDOMAIN_TYPEBOT_VIEWER}.${DOMAIN_NAME_OWNER}
+ADMIN_EMAIL=${SSL_EMAIL_OWNER}
 REDIS_URL=redis://redis:6379/1
 NODE_OPTIONS=--no-node-snapshot
 
