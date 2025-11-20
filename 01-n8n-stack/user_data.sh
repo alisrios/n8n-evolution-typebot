@@ -27,6 +27,10 @@ sudo mkswap /swapfile
 sudo swapon /swapfile
 echo "/swapfile swap swap defaults 0 0" | sudo tee -a /etc/fstab
 
+# Configurar vm.overcommit_memory para Redis
+echo "vm.overcommit_memory = 1" | sudo tee -a /etc/sysctl.conf
+sudo sysctl -p
+
 # Instalar Node.js e npm para ARM64
 curl -fsSL https://rpm.nodesource.com/setup_21.x | sudo bash -
 sudo yum install -y nodejs
